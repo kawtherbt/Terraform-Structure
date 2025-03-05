@@ -1,129 +1,193 @@
-# Appel du module VPC pour créer le VPC, les sous-réseaux, etc.
+provider "aws" {
+  region = "us-east-1"
+}
+
+# VPC Module
 module "vpc" {
-  source = "../../modules/vpc"
-
-  vpc_cidr            = "10.0.0.0/16"
-  public_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]  # Sous-réseaux publics
-  private_subnet_cidrs = ["10.0.3.0/24", "10.0.4.0/24"] # Sous-réseaux privés
-  availability_zones  = ["us-east-1a", "us-east-1b"]    # Zones de disponibilité
+  source    = "./modules/vpc"
+  vpc_cidr  = "10.0.0.0/16"
 }
 
-# Appel du module Bastion Host pour créer un bastion host dans le sous-réseau public
-module "bastion" {
-  source = "../../modules/bastion"
-
-  vpc_id     = module.vpc.vpc_id
-  subnet_id  = module.vpc.public_subnet_ids[0]  # Utilise le premier sous-réseau public
-  key_name   = "my-key-pair"                    # Clé SSH pour accéder au bastion
-}
-
-# Appel du module NAT Gateway pour créer un NAT Gateway dans le sous-réseau public
-module "nat_gateway" {
-  source = "../../modules/nat_gateway"
-
-  subnet_id = module.vpc.public_subnet_ids[0]  # Utilise le premier sous-réseau public
-}
-
-# Appel du module RDS pour créer une base de données RDS dans les sous-réseaux privés
-module "rds" {
-  source = "../../modules/rds"
-
-  vpc_id          = module.vpc.vpc_id
-  subnet_ids      = module.vpc.private_subnet_ids  # Utilise les sous-réseaux privés
-  db_name         = "globale_db"
-  db_username     = "admin"
-  db_password     = "securepassword123"
-  engine          = "mysql"
-  engine_version  = "5.7"
-  instance_class  = "db.t2.micro"
-  allocated_storage = 20
-}
-
-# Appel du module CloudFront pour créer une distribution CloudFront
-module "cloudfront" {
-  source = "../../modules/cloudfront"
-
-  origin_domain_name = "example.com"  # Domaine d'origine pour CloudFront
-}
-
-# Appel du module Route 53 pour configurer DNS
-module "route53" {
-  source = "../../modules/route53"
-
-  domain_name                = "example.com"
-  cloudfront_distribution_id = module.cloudfront.cloudfront_distribution_id
-}
-
-# Appel du module WAF pour configurer AWS WAF
-module "waf" {
-  source = "../../modules/waf"
-
-  cloudfront_distribution_id = module.cloudfront.cloudfront_distribution_id
-}
-
-# Appel du module ECR pour créer un Elastic Container Registry
+# ECR Module
 module "ecr" {
-  source = "../../modules/ecr"
-
-  repository_name = "globale-app"
+  source         = "./modules/ecr"
+  repository_name = "plan-it-repository"
 }
 
-# Appel du module EC2 pour créer les instances EC2 (Front Container, Gestion Equip, etc.)
-module "front_container" {
-  source = "../../modules/ec2"
-
-  instance_count = 2
-  instance_type  = "t2.micro"
-  subnet_ids     = module.vpc.public_subnet_ids
-  security_group_ids = [module.vpc.default_security_group_id]
-  key_name       = "my-key-pair"
-  ami            = "ami-0c55b159cbfafe1f0"  # AMI pour Amazon Linux 2
-  instance_name  = "front-container"
+# EKS Module
+module "eks" {
+  source           = "./modules/eks"
+  cluster_name     = "plan-it-cluster"
+  cluster_role_arn = "arn:aws:iam::123456789012:role/eks-cluster-role"
+  subnet_ids       = module.vpc.subnet_ids
 }
 
-module "gestion_equip" {
-  source = "../../modules/ec2"
-
-  instance_count = 1
-  instance_type  = "t2.micro"
-  subnet_ids     = module.vpc.private_subnet_ids
-  security_group_ids = [module.vpc.default_security_group_id]
-  key_name       = "my-key-pair"
-  ami            = "ami-0c55b159cbfafe1f0"
-  instance_name  = "gestion-equip"
+# RDS Module
+module "rds" {
+  source              = "./modules/rds"
+  allocated_storage   = 20
+  engine              = "postgres"
+  engine_version      = "12"
+  instance_class      = "db.t3.micro"
+  db_name             = "planitdb"
+  db_username         = "admin"
+  db_password         = "securepassword"
+  db_subnet_group_name = "plan-it-db-subnet"
 }
 
-module "gestion_pers" {
-  source = "../../modules/ec2"
-
-  instance_count = 1
-  instance_type  = "t2.micro"
-  subnet_ids     = module.vpc.private_subnet_ids
-  security_group_ids = [module.vpc.default_security_group_id]
-  key_name       = "my-key-pair"
-  ami            = "ami-0c55b159cbfafe1f0"
-  instance_name  = "gestion-pers"
+# CloudFront Module
+module "cloudfront" {
+  source          = "./modules/cloudfront"
+  origin_domain_name = "planit.com"
 }
 
-module "dashboard" {
-  source = "../../modules/ec2"
+# Security Groups (for ALB and EC2 Instances)
+resource "aws_security_group" "allow_alb" {
+  name        = "allow-alb"
+  description = "Allow inbound traffic for ALB"
 
-  instance_count = 1
-  instance_type  = "t2.micro"
-  subnet_ids     = module.vpc.public_subnet_ids
-  security_group_ids = [module.vpc.default_security_group_id]
-  key_name       = "my-key-pair"
-  ami            = "ami-0c55b159cbfafe1f0"
-  instance_name  = "dashboard"
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "allow-alb-sg"
+  }
 }
 
-module "auth" {
-  source = "../../modules/ec2"
+resource "aws_security_group" "allow_ec2" {
+  name        = "allow-ec2"
+  description = "Allow inbound traffic for EC2 instances"
 
-  instance_count = 1
-  instance_type  = "t2.micro"
-  subnet_ids     = module.vpc.private_subnet_ids
-  security_group_ids = [module.vpc.default_security_group_id]
-  key_name       = "my-key-pair"
-  ami            = "ami-0c55b159cbfafe1f0"
-  instance
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "allow-ec2-sg"
+  }
+}
+
+# NAT Gateway
+resource "aws_nat_gateway" "main" {
+  allocation_id = var.elastic_ip_id
+  subnet_id     = module.vpc.public_subnet_ids[0]
+}
+
+# Elastic Load Balancer (ELB)
+resource "aws_lb" "main" {
+  name               = "plan-it-elb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups   = [aws_security_group.allow_alb.id]
+  subnets            = module.vpc.public_subnet_ids
+
+  enable_deletion_protection = true
+}
+
+# WAF Web ACL
+resource "aws_wafv2_web_acl" "main" {
+  name        = "planit-waf"
+  scope       = "REGIONAL"
+  description = "WAF for Plan-It application"
+  default_action {
+    allow {}
+  }
+
+  rule {
+    action {
+      block {}
+    }
+    rule_id = "AWS-AWSManagedRulesCommonRuleSet"
+    priority = 0
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        rule_group_name = "AWSManagedRulesCommonRuleSet"
+      }
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "waf-metrics"
+    sampled_requests_enabled   = true
+  }
+
+  tags = {
+    Name = "Plan-It WAF"
+  }
+}
+
+# Route 53 Record
+resource "aws_route53_record" "main" {
+  zone_id = var.zone_id
+  name    = "planit.com"
+  type    = "A"
+  ttl     = 300
+  records = [aws_lb.main.dns_name]
+}
+
+# Outputs
+output "vpc_id" {
+  value = module.vpc.vpc_id
+}
+
+output "ecr_url" {
+  value = module.ecr.repository_url
+}
+
+output "eks_cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "rds_endpoint" {
+  value = module.rds.rds_endpoint
+}
+
+output "cloudfront_url" {
+  value = module.cloudfront.cloudfront_domain_name
+}
+
+output "nat_gateway_id" {
+  value = aws_nat_gateway.main.id
+}
+
+output "elb_dns_name" {
+  value = aws_lb.main.dns_name
+}
+
+output "waf_arn" {
+  value = aws_wafv2_web_acl.main.arn
+}
+
+output "route53_record" {
+  value = aws_route53_record.main.name
+}
