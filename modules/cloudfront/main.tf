@@ -1,12 +1,7 @@
-resource "aws_cloudfront_distribution" "main" {
-  origin {
-    domain_name = var.origin_domain_name
-    origin_id   = "S3-origin"
-  }
-
-  enabled = true
-}
-
-output "cloudfront_domain_name" {
-  value = aws_cloudfront_distribution.main.domain_name
+module "cloudfront" {
+  source              = "terraform-aws-modules/cloudfront/aws"
+  origin_id           = "S3-origin"
+  origin_domain_name = var.s3_bucket_domain_name
+  enabled             = true
+  is_ipv6_enabled     = true
 }

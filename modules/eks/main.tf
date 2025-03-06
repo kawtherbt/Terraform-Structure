@@ -1,14 +1,15 @@
-resource "aws_eks_cluster" "main" {
-  name     = var.cluster_name
-  role_arn = var.cluster_role_arn
-
-  vpc_config {
-    subnet_ids = var.subnet_ids
+module "eks" {
+  source          = "terraform-aws-modules/eks/aws"
+  cluster_name    = var.eks_cluster_name
+  cluster_version = var.eks_cluster_version
+  subnets         = var.subnets
+  vpc_id          = var.vpc_id
+  node_groups = {
+    eks_nodes = {
+      desired_capacity = 2
+      max_capacity     = 3
+      min_capacity     = 1
+      instance_type    = "t3.medium"
+    }
   }
-
-  depends_on = [aws_iam_role_policy_attachment.eks_policy]
-}
-
-output "cluster_name" {
-  value = aws_eks_cluster.main.name
 }

@@ -1,7 +1,4 @@
-resource "aws_ecr_repository" "main" {
-  name = var.repository_name
-}
-
-output "repository_url" {
-  value = aws_ecr_repository.main.repository_url
+module "ecr" {
+  source          = "terraform-aws-modules/ecr/aws"
+  repository_name = var.ecr_repository_name
 }

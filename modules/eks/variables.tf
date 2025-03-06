@@ -1,14 +1,19 @@
-variable "cluster_name" {
-  description = "Name of the EKS cluster"
+variable "eks_cluster_name" {
+  description = "Nom du cluster EKS"
   type        = string
 }
 
-variable "cluster_role_arn" {
-  description = "ARN of the EKS IAM role"
+variable "eks_cluster_version" {
+  description = "Version d'EKS"
   type        = string
 }
 
-variable "subnet_ids" {
-  description = "List of subnet IDs for EKS"
+variable "subnets" {
+  description = "Sous-réseaux pour EKS"
   type        = list(string)
+}
+
+variable "vpc_id" {
+  description = "ID du VPC"
+  type        = string
 }

@@ -1,94 +1,117 @@
-# VPC Variables
+variable "aws_region" {
+  description = "La région AWS où déployer l'infrastructure"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "app_name" {
+  description = "Nom de l'application (par défaut 'planit')"
+  type        = string
+  default     = "planit"
+}
+
 variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
+  description = "CIDR du VPC"
   type        = string
   default     = "10.0.0.0/16"
 }
 
-variable "subnet_cidr" {
-  description = "CIDR block for the public subnets"
-  type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24"]
+variable "private_subnet_cidr" {
+  description = "CIDR pour les sous-réseaux privés"
+  type        = string
+  default     = "10.0.1.0/24"
 }
 
-variable "private_subnet_cidr" {
-  description = "CIDR block for the private subnets"
-  type        = list(string)
-  default     = ["10.0.3.0/24", "10.0.4.0/24"]
+variable "public_subnet_cidr" {
+  description = "CIDR pour les sous-réseaux publics"
+  type        = string
+  default     = "10.0.0.0/24"
 }
 
 variable "availability_zones" {
-  description = "Availability Zones for the subnets"
+  description = "Les zones de disponibilité pour les sous-réseaux"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  default     = ["us-west-2a", "us-west-2b"]
 }
 
-# Elastic IP for NAT Gateway
-variable "elastic_ip_id" {
-  description = "Elastic IP ID for the NAT Gateway"
+variable "eks_cluster_name" {
+  description = "Nom du cluster EKS"
+  type        = string
+  default     = "${var.app_name}-eks-cluster"
+}
+
+variable "cluster_role_arn" {
+  description = "ARN du rôle IAM pour EKS"
   type        = string
 }
 
-# Route53
-variable "zone_id" {
-  description = "Route 53 Hosted Zone ID"
+variable "db_instance_name" {
+  description = "Nom de l'instance RDS"
   type        = string
+  default     = "${var.app_name}-db-instance"
 }
 
-# ECR
-variable "repository_name" {
-  description = "Name of the ECR repository"
+variable "db_name" {
+  description = "Nom de la base de données"
   type        = string
-  default     = "plan-it-repository"
+  default     = "${var.app_name}db"
 }
 
-# RDS
 variable "db_username" {
-  description = "Username for the RDS instance"
+  description = "Nom d'utilisateur de la base de données"
   type        = string
   default     = "admin"
 }
 
 variable "db_password" {
-  description = "Password for the RDS instance"
+  description = "Mot de passe de la base de données"
   type        = string
   sensitive   = true
-  default     = "securepassword"
 }
 
-variable "db_name" {
-  description = "Name of the RDS database"
-  type        = string
-  default     = "planitdb"
-}
-
-variable "db_instance_class" {
-  description = "Instance class for RDS"
+variable "instance_class" {
+  description = "Classe d'instance RDS"
   type        = string
   default     = "db.t3.micro"
 }
 
 variable "allocated_storage" {
-  description = "Allocated storage for RDS"
+  description = "Stockage alloué pour l'instance RDS (en Go)"
   type        = number
   default     = 20
 }
 
-# EKS Cluster
-variable "cluster_name" {
-  description = "Name of the EKS cluster"
+variable "bucket_name" {
+  description = "Nom du bucket S3"
   type        = string
-  default     = "plan-it-cluster"
+  default     = "${var.app_name}-static-assets"
 }
 
-variable "cluster_role_arn" {
-  description = "IAM Role ARN for the EKS cluster"
+variable "function_name" {
+  description = "Nom de la fonction Lambda"
+  type        = string
+  default     = "${var.app_name}-qr-lambda"
+}
+
+variable "lambda_role_arn" {
+  description = "ARN du rôle IAM pour Lambda"
   type        = string
 }
 
-# CloudFront
-variable "origin_domain_name" {
-  description = "Origin domain name for CloudFront"
+variable "ecr_repository_name" {
+  description = "Nom du dépôt ECR"
   type        = string
-  default     = "planit.com"
+  default     = "${var.app_name}-ecr-repository"
+}
+
+variable "s3_bucket_origin" {
+  description = "Nom du bucket S3 pour CloudFront"
+  type        = string
+  default     = "${var.app_name}-static-assets"
+}
+
+variable "cloudfront_distribution_name" {
+  description = "Nom de la distribution CloudFront"
+  type        = string
+  default     = "${var.app_name}-cloudfront"
 }

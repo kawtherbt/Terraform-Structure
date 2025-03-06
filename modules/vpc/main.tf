@@ -1,12 +1,10 @@
-resource "aws_vpc" "main" {
-  cidr_block = var.vpc_cidr
-  enable_dns_support = true
+module "vpc" {
+  source          = "terraform-aws-modules/vpc/aws"
+  name            = var.vpc_name
+  cidr            = var.vpc_cidr
+  azs             = var.availability_zones
+  private_subnets = var.private_subnets
+  public_subnets  = var.public_subnets
   enable_dns_hostnames = true
-  tags = {
-    Name = "Main VPC"
-  }
-}
-
-output "vpc_id" {
-  value = aws_vpc.main.id
+  enable_dns_support  = true
 }
