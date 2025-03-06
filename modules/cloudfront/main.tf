@@ -1,44 +1,39 @@
-module "vpc" {
-  source = "../modules/vpc"
+resource "aws_cloudfront_distribution" "cdn" {
+  origin {
+    domain_name = var.s3_bucket_domain_name
+    origin_id   = "s3-origin"
+  }
 
-  vpc_cidr = "10.0.0.0/16"
-  public_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
-  private_subnet_cidrs = ["10.0.3.0/24", "10.0.4.0/24"]
-  availability_zones = ["us-east-1a", "us-east-1b"]
-}
+  enabled             = true
+  default_root_object = "index.html"
 
-module "bastion" {
-  source = "../modules/bastion"
+  default_cache_behavior {
+    target_origin_id       = "s3-origin"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
 
-  vpc_id = module.vpc.vpc_id
-  subnet_id = module.vpc.public_subnet_ids[0]
-}
+    forwarded_values {
+      query_string = false
 
-module "rds" {
-  source = "../modules/rds"
+      cookies {
+        forward = "none"
+      }
+    }
+  }
 
-  vpc_id = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnet_ids
-  db_name = "mydatabase"
-  db_username = "admin"
-  db_password = "password"
-}
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
 
-module "cloudfront" {
-  source = "../modules/cloudfront"
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
 
-  origin_domain_name = "example.com"
-}
-
-module "route53" {
-  source = "../modules/route53"
-
-  domain_name = "example.com"
-  cloudfront_distribution_id = module.cloudfront.cloudfront_distribution_id
-}
-
-module "waf" {
-  source = "../modules/waf"
-
-  cloudfront_distribution_id = module.cloudfront.cloudfront_distribution_id
+  tags = {
+    Name = "my-cloudfront-cdn"
+  }
 }
