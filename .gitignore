@@ -1,0 +1,8 @@
+# Ignore Terraform state files  
+*.tfstate  
+*.tfstate.backup  
+# Ignore .terraform directory  
+.terraform/  
+# Ignore provider binaries  
+.terraform.lock.hcl  
+terraform-provider-aws_*.exe  
